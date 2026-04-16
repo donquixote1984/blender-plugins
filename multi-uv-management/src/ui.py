@@ -14,19 +14,19 @@ class MULTIUV_PT_MainPanel(bpy.types.Panel):
     """
     Main panel for Multi UV Management.
 
-    Displays in UV Editor and Shader Editor sidebar with tabs for up to 4 UV layers
+    Displays in UV Editor sidebar with tabs for up to 4 UV layers
     and buttons for managing UV data across multiple objects.
     """
     bl_label = "Multi UV"
     bl_idname = "MULTIUV_PT_main_panel"
-    bl_space_type = 'NODE_EDITOR'
+    bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = 'Multi UV'
 
     @classmethod
     def poll(cls, context):
-        # Show in Shader Editor (Shading view)
-        return context.space_data.type == 'NODE_EDITOR' and context.space_data.tree_type == 'ShaderNodeTree'
+        # Show in UV Editor
+        return context.space_data.type == 'IMAGE_EDITOR' and context.space_data.ui_mode == 'UV'
 
     def draw(self, context):
         layout = self.layout
