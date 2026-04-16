@@ -31,6 +31,7 @@ from .operators import (
     MULTIUV_OT_CopyUVLayersFromActive,
     MULTIUV_OT_ForceUVLayersFromActive,
     MULTIUV_OT_CreateTexture,
+    MULTIUV_OT_RemoveAllMaterials,
 )
 from .ui import MULTIUV_PT_MainPanel, MULTIUV_PT_BatchOperationPanel
 
@@ -55,6 +56,7 @@ classes = (
     MULTIUV_OT_CopyUVLayersFromActive,
     MULTIUV_OT_ForceUVLayersFromActive,
     MULTIUV_OT_CreateTexture,
+    MULTIUV_OT_RemoveAllMaterials,
     MULTIUV_PT_MainPanel,
     MULTIUV_PT_BatchOperationPanel,
 )

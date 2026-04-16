@@ -226,7 +226,7 @@ class MULTIUV_PT_MainPanel(bpy.types.Panel):
         uv_name = get_uv_name_for_tab(context, uv_index)
         is_unified = uv_name and uv_name != "multiple names" and uv_name != ""
 
-        row = layout.row()
+        row = layout.row(align=True)
         if is_unified:
             op = row.operator("multiuv.create_texture", text="Create Texture", icon='TEXTURE')
             op.uv_index = uv_index
@@ -234,6 +234,11 @@ class MULTIUV_PT_MainPanel(bpy.types.Panel):
             row.enabled = False
             op = row.operator("multiuv.create_texture", text="Create Texture", icon='TEXTURE')
             op.uv_index = uv_index
+
+        # Remove All Materials button
+        row.operator("multiuv.remove_all_materials", text="Remove All Materials", icon='TRASH')
+
+        if not is_unified:
             row = layout.row()
             row.label(text="Need unify the UV name", icon='ERROR')
 
@@ -246,15 +251,15 @@ class MULTIUV_PT_BatchOperationPanel(bpy.types.Panel):
     """
     bl_label = "Batch Operation"
     bl_idname = "MULTIUV_PT_batch_operation_panel"
-    bl_space_type = 'NODE_EDITOR'
+    bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'UI'
     bl_category = 'Multi UV'
     bl_options = {'DEFAULT_CLOSED'}  # Collapsed by default
 
     @classmethod
     def poll(cls, context):
-        # Show in Shader Editor (Shading view)
-        return context.space_data.type == 'NODE_EDITOR' and context.space_data.tree_type == 'ShaderNodeTree'
+        # Show in UV Editor
+        return context.space_data.type == 'IMAGE_EDITOR'
 
     def draw(self, context):
         layout = self.layout

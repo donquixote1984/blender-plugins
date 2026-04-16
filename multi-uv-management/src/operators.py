@@ -559,3 +559,42 @@ class MULTIUV_OT_CreateTexture(bpy.types.Operator):
 
         self.report({'INFO'}, f"Created texture nodes for {created_count} objects")
         return {'FINISHED'}
+
+
+class MULTIUV_OT_RemoveAllMaterials(bpy.types.Operator):
+    """
+    Remove all materials from selected objects.
+
+    This operator removes all material slots from selected mesh objects
+    with a confirmation dialog to prevent accidental deletion.
+    """
+    bl_idname = "multiuv.remove_all_materials"
+    bl_label = "Remove All Materials"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        selected_meshes = [obj for obj in context.selected_objects if obj.type == 'MESH']
+
+        if not selected_meshes:
+            self.report({'WARNING'}, "No mesh objects selected")
+            return {'CANCELLED'}
+
+        removed_count = 0
+        for obj in selected_meshes:
+            if obj.data.materials:
+                # Clear all material slots
+                obj.data.materials.clear()
+                removed_count += 1
+
+        self.report({'INFO'}, f"Removed materials from {removed_count} objects")
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        # Show confirmation dialog
+        selected_meshes = [obj for obj in context.selected_objects if obj.type == 'MESH']
+
+        if not selected_meshes:
+            self.report({'WARNING'}, "No mesh objects selected")
+            return {'CANCELLED'}
+
+        return context.window_manager.invoke_confirm(self, event)
