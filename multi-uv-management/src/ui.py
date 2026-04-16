@@ -26,7 +26,7 @@ class MULTIUV_PT_MainPanel(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         # Show in UV Editor
-        return context.space_data.type == 'IMAGE_EDITOR' and context.space_data.ui_mode == 'UV'
+        return context.space_data.type == 'IMAGE_EDITOR'
 
     def draw(self, context):
         layout = self.layout
