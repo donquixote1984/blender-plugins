@@ -283,11 +283,30 @@ class SHADEREDITOR_OT_mix_color(Operator):
         elif len(selected_nodes) == 1:
             # One node selected
             node = selected_nodes[0]
+            color_output = None
+
             if hasattr(node, 'outputs'):
                 for output in node.outputs:
                     if output.type == 'RGBA':
-                        node_tree.links.new(output, mix_node.inputs[6])  # A
+                        color_output = output
                         break
+
+            if color_output:
+                # Store all existing output links BEFORE making new connections
+                links_to_replace = []
+                for link in color_output.links:
+                    links_to_replace.append(link.to_socket)
+
+                # Remove old links
+                for link in list(color_output.links):
+                    node_tree.links.remove(link)
+
+                # Connect selected node to Mix A input
+                node_tree.links.new(color_output, mix_node.inputs[6])  # A
+
+                # Reconnect: Mix output replaces original node's destinations
+                for to_socket in links_to_replace:
+                    node_tree.links.new(mix_node.outputs[2], to_socket)
 
         # If no nodes selected or other cases, just create empty Mix Color node
 
@@ -311,11 +330,15 @@ class SHADEREDITOR_OT_mix_uv_texture(Operator):
             self.report({'WARNING'}, "No active node tree")
             return {'CANCELLED'}
 
-        # Find selected Image Texture node
-        selected_image_texture = None
+        # Find selected node with color output
+        selected_color_node = None
         for node in context.selected_nodes:
-            if node.type == 'TEX_IMAGE':
-                selected_image_texture = node
+            if hasattr(node, 'outputs'):
+                for output in node.outputs:
+                    if output.type == 'RGBA':
+                        selected_color_node = node
+                        break
+            if selected_color_node:
                 break
 
         # Use cursor location (pie menu position) as base
@@ -342,25 +365,30 @@ class SHADEREDITOR_OT_mix_uv_texture(Operator):
         node_tree.links.new(mapping_node.outputs['Vector'], image_texture_node.inputs['Vector'])
         node_tree.links.new(image_texture_node.outputs['Color'], mix_node.inputs['B'])
 
-        # If there's a selected Image Texture node
-        if selected_image_texture:
-            # Store all existing output links BEFORE making any new connections
-            links_to_replace = []
-            for output in selected_image_texture.outputs:
-                for link in output.links:
-                    links_to_replace.append((link.to_socket, output.name))
+        # If there's a selected node with color output
+        if selected_color_node:
+            # Find the color output
+            color_output = None
+            for output in selected_color_node.outputs:
+                if output.type == 'RGBA':
+                    color_output = output
+                    break
 
-            # Remove old links from selected Image Texture
-            for output in selected_image_texture.outputs:
-                for link in list(output.links):
+            if color_output:
+                # Store all existing output links BEFORE making any new connections
+                links_to_replace = []
+                for link in color_output.links:
+                    links_to_replace.append(link.to_socket)
+
+                # Remove old links from selected node
+                for link in list(color_output.links):
                     node_tree.links.remove(link)
 
-            # Connect selected Image Texture to Mix Color A input
-            node_tree.links.new(selected_image_texture.outputs['Color'], mix_node.inputs['A'])
+                # Connect selected node to Mix Color A input
+                node_tree.links.new(color_output, mix_node.inputs['A'])
 
-            # Reconnect: Mix node output replaces original Image Texture destinations
-            for to_socket, output_name in links_to_replace:
-                if output_name == 'Color':
+                # Reconnect: Mix node output replaces original node's destinations
+                for to_socket in links_to_replace:
                     node_tree.links.new(mix_node.outputs[2], to_socket)
 
         return {'FINISHED'}
