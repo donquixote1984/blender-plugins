@@ -300,13 +300,111 @@ class SHADEREDITOR_OT_mix_color(Operator):
         return {'FINISHED'}
 
 
-class SHADEREDITOR_OT_test_button(Operator):
-    bl_idname = "shader_editor.test_button"
-    bl_label = "Test Button"
-    bl_description = "A test button"
+class SHADEREDITOR_OT_mix_uv_texture(Operator):
+    bl_idname = "shader_editor.mix_uv_texture"
+    bl_label = "Mix UV Texture"
+    bl_description = "Create UVMap -> Mapping -> Image Texture -> Mix Color chain"
 
     def execute(self, context):
-        self.report({'INFO'}, "Test button clicked!")
+        node_tree = context.space_data.edit_tree
+        if not node_tree:
+            self.report({'WARNING'}, "No active node tree")
+            return {'CANCELLED'}
+
+        # Find selected Image Texture node
+        selected_image_texture = None
+        for node in context.selected_nodes:
+            if node.type == 'TEX_IMAGE':
+                selected_image_texture = node
+                break
+
+        # Use cursor location (pie menu position) as base
+        base_x = context.space_data.cursor_location[0]
+        base_y = context.space_data.cursor_location[1]
+
+        # Create nodes
+        uvmap_node = node_tree.nodes.new('ShaderNodeUVMap')
+        uvmap_node.location = (base_x - 800, base_y)
+
+        mapping_node = node_tree.nodes.new('ShaderNodeMapping')
+        mapping_node.location = (base_x - 600, base_y)
+
+        image_texture_node = node_tree.nodes.new('ShaderNodeTexImage')
+        image_texture_node.location = (base_x - 300, base_y)
+
+        mix_node = node_tree.nodes.new('ShaderNodeMix')
+        mix_node.data_type = 'RGBA'
+        mix_node.blend_type = 'MULTIPLY'
+        mix_node.location = (base_x + 100, base_y)
+
+        # Connect the chain: UVMap -> Mapping -> Image Texture -> Mix Color [B]
+        node_tree.links.new(uvmap_node.outputs['UV'], mapping_node.inputs['Vector'])
+        node_tree.links.new(mapping_node.outputs['Vector'], image_texture_node.inputs['Vector'])
+        node_tree.links.new(image_texture_node.outputs['Color'], mix_node.inputs['B'])
+
+        # If there's a selected Image Texture node
+        if selected_image_texture:
+            # Store all existing output links BEFORE making any new connections
+            links_to_replace = []
+            for output in selected_image_texture.outputs:
+                for link in output.links:
+                    links_to_replace.append((link.to_socket, output.name))
+
+            # Remove old links from selected Image Texture
+            for output in selected_image_texture.outputs:
+                for link in list(output.links):
+                    node_tree.links.remove(link)
+
+            # Connect selected Image Texture to Mix Color A input
+            node_tree.links.new(selected_image_texture.outputs['Color'], mix_node.inputs['A'])
+
+            # Reconnect: Mix node output replaces original Image Texture destinations
+            for to_socket, output_name in links_to_replace:
+                if output_name == 'Color':
+                    node_tree.links.new(mix_node.outputs[2], to_socket)
+
+        return {'FINISHED'}
+
+
+class SHADEREDITOR_OT_increase_tile(Operator):
+    bl_idname = "shader_editor.increase_tile"
+    bl_label = "Increase Tile"
+    bl_description = "Add a Value node to the Scale input of the selected Mapping node"
+
+    @classmethod
+    def poll(cls, context):
+        if context.space_data.type != 'NODE_EDITOR':
+            return False
+        if not context.space_data.edit_tree:
+            return False
+        for node in context.selected_nodes:
+            if node.type == 'MAPPING':
+                return True
+        return False
+
+    def execute(self, context):
+        node_tree = context.space_data.edit_tree
+
+        mapping_node = None
+        for node in context.selected_nodes:
+            if node.type == 'MAPPING':
+                mapping_node = node
+                break
+
+        if not mapping_node:
+            return {'CANCELLED'}
+
+        scale_input = mapping_node.inputs['Scale']
+        if scale_input.is_linked:
+            self.report({'INFO'}, "Scale input already connected")
+            return {'CANCELLED'}
+
+        value_node = node_tree.nodes.new('ShaderNodeValue')
+        value_node.outputs[0].default_value = 2.0
+        value_node.location = (mapping_node.location.x - 200, mapping_node.location.y - 200)
+
+        node_tree.links.new(value_node.outputs[0], scale_input)
+
         return {'FINISHED'}
 
 
@@ -323,7 +421,9 @@ class SHADEREDITOR_MT_pie_menu(Menu):
         # Right
         pie.operator("shader_editor.mix_color", text="Mix Color", icon='NODE_COMPOSITING')
         # Left
+        pie.operator("shader_editor.increase_tile", text="Increase Tile", icon='MESH_GRID')
         # Bottom
+        pie.operator("shader_editor.mix_uv_texture", text="Mix UV Texture", icon='UV')
 
 
 addon_keymaps = []
@@ -332,7 +432,8 @@ addon_keymaps = []
 def register():
     bpy.utils.register_class(SHADEREDITOR_OT_sd_texture_import)
     bpy.utils.register_class(SHADEREDITOR_OT_mix_color)
-    bpy.utils.register_class(SHADEREDITOR_OT_test_button)
+    bpy.utils.register_class(SHADEREDITOR_OT_mix_uv_texture)
+    bpy.utils.register_class(SHADEREDITOR_OT_increase_tile)
     bpy.utils.register_class(SHADEREDITOR_MT_pie_menu)
 
     wm = bpy.context.window_manager
@@ -350,7 +451,8 @@ def unregister():
     addon_keymaps.clear()
 
     bpy.utils.unregister_class(SHADEREDITOR_MT_pie_menu)
-    bpy.utils.unregister_class(SHADEREDITOR_OT_test_button)
+    bpy.utils.unregister_class(SHADEREDITOR_OT_increase_tile)
+    bpy.utils.unregister_class(SHADEREDITOR_OT_mix_uv_texture)
     bpy.utils.unregister_class(SHADEREDITOR_OT_mix_color)
     bpy.utils.unregister_class(SHADEREDITOR_OT_sd_texture_import)
 
